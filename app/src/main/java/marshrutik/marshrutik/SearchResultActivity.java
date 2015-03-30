@@ -2,11 +2,15 @@ package marshrutik.marshrutik;
 
 import android.app.SearchManager;
 import android.content.Intent;
+import android.database.Cursor;
 import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.widget.TextView;
 import android.widget.Toast;
+
+import org.w3c.dom.Text;
 
 
 public class SearchResultActivity extends ActionBarActivity {
@@ -48,12 +52,17 @@ public class SearchResultActivity extends ActionBarActivity {
 
     private void handleIntent(Intent intent) {
         //обрабатывает запрос, получая информацию из строки поиска
-        Toast.makeText(getApplicationContext(),
-                "handle that", Toast.LENGTH_SHORT).show();
+        DatabaseTable databaseTable = new DatabaseTable(this);
         if (Intent.ACTION_SEARCH.equals(intent.getAction())) {
             String query = intent.getStringExtra(SearchManager.QUERY);
-            Toast.makeText(getApplicationContext(),
-                    query, Toast.LENGTH_LONG).show();
+            Cursor cursor = databaseTable.getCityMatches(query, null);
+            TextView textView = (TextView) findViewById(R.id.textViewSearchResult);
+            if (cursor != null) {
+                textView.setText("Найдено совпадение: Город " + cursor.getString(0));
+            }
+            else {
+                textView.setText("По Вашему запросу " + query + " ничего не найдено");
+            }
         }
 
     }
