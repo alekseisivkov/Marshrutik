@@ -1,9 +1,14 @@
 package marshrutik.marshrutik;
 
+import android.app.SearchManager;
+import android.content.Context;
+import android.content.Intent;
 import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.widget.SearchView;
+import android.widget.Toast;
 
 
 public class MainActivity extends ActionBarActivity {
@@ -19,6 +24,13 @@ public class MainActivity extends ActionBarActivity {
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present.
         getMenuInflater().inflate(R.menu.menu_main, menu);
+        //Ассоциируем serachable конфигурацию с SearchView. Для живого поиска
+        SearchManager searchManager =
+                (SearchManager)getSystemService(Context.SEARCH_SERVICE);
+        SearchView searchView =
+                (SearchView)menu.findItem(R.id.action_search).getActionView();
+        searchView.setSearchableInfo(
+                searchManager.getSearchableInfo(getComponentName()));
         return true;
     }
 
@@ -30,10 +42,33 @@ public class MainActivity extends ActionBarActivity {
         int id = item.getItemId();
 
         //noinspection SimplifiableIfStatement
-        if (id == R.id.action_settings) {
-            return true;
+        switch (id) {
+            case R.id.action_settings:
+                Intent settingsIntent = new Intent(getApplicationContext(),
+                        SettingsActivity.class);
+                startActivity(settingsIntent);
+                return true;
+            case R.id.action_add_route:
+                addRoute();
+                return true;
+            case R.id.action_search:
+//                searchRoute();
+                return true;
+            default:
+                return super.onOptionsItemSelected(item);
         }
+    }
 
-        return super.onOptionsItemSelected(item);
+//    private void searchRoute() {
+//        //Поиск в ActionBar, в который вводится название города и вызывается активность
+//        //с выдачей результатов по городу, а так же возможностью уточнить запрос
+//        Toast.makeText(getApplicationContext(),
+//                "Вызван поиск", Toast.LENGTH_SHORT).show();
+//    }
+
+    private void addRoute() {
+        //функция добавления маршурута, вызывается из Action Bar
+        Toast.makeText(getApplicationContext(),
+                "Вызвано добавление маршрута", Toast.LENGTH_SHORT).show();
     }
 }

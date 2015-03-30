@@ -1,5 +1,13 @@
 <resources>
     <string name="app_name">Marshrutik</string>
+    <string name="title_activity_search_result">Результаты поиска</string>
 
+    <!--Названия элементов ActionBar-->
     <string name="action_settings">Настройки</string>
+    <string name="action_search">Поиск</string>
+    <string name="action_add_route">Добавить маршрут</string>
+
+    <string name="search_hint">Введите город</string>
+
+
 </resources>
