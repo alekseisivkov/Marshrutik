@@ -24,7 +24,7 @@ public class MainActivity extends ActionBarActivity {
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present.
         getMenuInflater().inflate(R.menu.menu_main, menu);
-        //Ассоциируем serachable конфигурацию с SearchView. Для живого поиска
+        //Ассоциируем serachable конфигурацию с SearchView. Для поиска
         SearchManager searchManager =
                 (SearchManager)getSystemService(Context.SEARCH_SERVICE);
         SearchView searchView =
@@ -53,6 +53,11 @@ public class MainActivity extends ActionBarActivity {
                 return true;
             case R.id.action_search:
 //                searchRoute();
+                return true;
+            case R.id.action_login:
+                Intent loginIntent = new Intent(getApplicationContext(),
+                        LoginActivity.class);
+                startActivity(loginIntent);
                 return true;
             default:
                 return super.onOptionsItemSelected(item);

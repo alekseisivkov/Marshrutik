@@ -109,6 +109,8 @@ public class DatabaseTable {
             final Resources resources = helperContext.getResources();
             InputStream inputStream = resources.openRawResource(R.raw.cities);
             BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
+            //TODO:не распознаются города с дефисами
+
 
             try {
                 String line;
