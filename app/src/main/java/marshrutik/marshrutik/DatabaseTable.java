@@ -15,9 +15,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 
-/**
- * Created by Alex on 30.03.2015.
- */
 public class DatabaseTable {
     private final DatabaseOpenHelper databaseOpenHelper;
 
@@ -28,7 +25,7 @@ public class DatabaseTable {
     public static final String COL_COUNTRY = "COUNTRY";
 
     private static final String DATABASE_NAME = "Cities";
-    private static final int DATABASE_VERSION = 1;
+    private static final int DATABASE_VERSION = 5;
     private static final String FTS_VIRTUAL_TABLE = "FTS";
 
 
@@ -38,7 +35,11 @@ public class DatabaseTable {
     }
     public Cursor getCityMatches(String query, String[] columns) {
         String selection = COL_CITY + " MATCH ?";
-        String[] selectionArgs = new String[] {query+"*"};
+        if (query.contains("-")) {      //SQLite не умеет искать с тире, поэтому меняем все тире
+            query = query.replace("-", "_");    //на знак любого 1 символа
+        }
+        String[] selectionArgs = new String[] {query};
+        //если требуется найти только по начальной части запроса, то {query+"*"}
 
         return query(selection, selectionArgs, columns);
     }
@@ -88,6 +89,7 @@ public class DatabaseTable {
 
         @Override
         public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
+            //вызывается только при смене версии БД. Версия описана констой сверху
             Log.w(TAG, "Upgrading database from version " + oldVersion + " to "
                     +newVersion + ", which will destroy all old data");
             db.execSQL("DROP TABLE IF EXISTS " + FTS_VIRTUAL_TABLE);
@@ -109,15 +111,12 @@ public class DatabaseTable {
             final Resources resources = helperContext.getResources();
             InputStream inputStream = resources.openRawResource(R.raw.cities);
             BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
-            //TODO:не распознаются города с дефисами
-
-
             try {
                 String line;
                 while ((line = reader.readLine()) != null) {
-                    String[] strings = TextUtils.split(line, " ");
+                    String[] strings = TextUtils.split(line, "—");
                     if (strings.length < 2) continue;
-                    long id = addCity(strings[0].trim(), strings[1].trim());
+                    long id = addCity(strings[0], strings[1].trim());
                     if (id < 0) {
                         Log.e(TAG, "Unable to add city: " + strings[0].trim());
                     }

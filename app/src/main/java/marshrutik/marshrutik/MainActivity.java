@@ -75,5 +75,8 @@ public class MainActivity extends ActionBarActivity {
         //функция добавления маршурута, вызывается из Action Bar
         Toast.makeText(getApplicationContext(),
                 "Вызвано добавление маршрута", Toast.LENGTH_SHORT).show();
+        Intent addRouteIntent = new Intent(getApplicationContext(), AddRouteActivity.class);
+        startActivity(addRouteIntent);
+
     }
 }
