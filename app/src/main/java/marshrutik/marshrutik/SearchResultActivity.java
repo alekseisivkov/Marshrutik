@@ -58,7 +58,7 @@ public class SearchResultActivity extends ActionBarActivity {
             Cursor cursor = databaseTable.getCityMatches(query, null);
             TextView textView = (TextView) findViewById(R.id.textViewSearchResult);
             if (cursor != null) {
-                textView.setText("Найдено совпадение: Город " + cursor.getString(0));
+                textView.setText("Найдено совпадение: Город " + cursor.getString(1));
             }
             else {
                 textView.setText("По Вашему запросу " + query + " ничего не найдено");

@@ -2,37 +2,40 @@ package marshrutik.marshrutik;
 
 import android.content.ContentValues;
 import android.content.Context;
-import android.content.res.Resources;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 import android.database.sqlite.SQLiteQueryBuilder;
-import android.text.TextUtils;
 import android.util.Log;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
+import java.util.List;
+
+import retrofit.RestAdapter;
+import retrofit.RetrofitError;
+import retrofit.client.Response;
+import retrofit.Callback;
 
 public class DatabaseTable {
     private final DatabaseOpenHelper databaseOpenHelper;
 
     private static final String TAG = "CitiesDatabase";
 
+    public static final String BASE_URL = "https://rocky-headland-7761.herokuapp.com/api";
+
     //колонки, которые мы включим в нашу таблицу
+    public static final String COL_CITY_ID = "CITY_ID";
     public static final String COL_CITY = "CITY";
-    public static final String COL_COUNTRY = "COUNTRY";
 
-    private static final String DATABASE_NAME = "Cities";
-    private static final int DATABASE_VERSION = 5;
+    private static final String DATABASE_NAME = "CitiesRU";
+    private static final int DATABASE_VERSION = 8;
     private static final String FTS_VIRTUAL_TABLE = "FTS";
-
 
 
     public DatabaseTable(Context context) {
         databaseOpenHelper = new DatabaseOpenHelper(context);
     }
+
     public Cursor getCityMatches(String query, String[] columns) {
         String selection = COL_CITY + " MATCH ?";
         if (query.contains("-")) {      //SQLite не умеет искать с тире, поэтому меняем все тире
@@ -43,6 +46,7 @@ public class DatabaseTable {
 
         return query(selection, selectionArgs, columns);
     }
+
     private Cursor query(String selection, String[] selectionArgs, String[] columns) {
         SQLiteQueryBuilder builder = new SQLiteQueryBuilder();
         builder.setTables(FTS_VIRTUAL_TABLE);
@@ -71,8 +75,8 @@ public class DatabaseTable {
         private static final String FTS_TABLE_CREATE =
                 "CREATE VIRTUAL TABLE " + FTS_VIRTUAL_TABLE +
                         " USING fts3 (" +
-                        COL_CITY + ", " +
-                        COL_COUNTRY + ")";
+                        COL_CITY_ID + ", " +
+                        COL_CITY + ")";
 
 
         DatabaseOpenHelper(Context context) {
@@ -95,6 +99,7 @@ public class DatabaseTable {
             db.execSQL("DROP TABLE IF EXISTS " + FTS_VIRTUAL_TABLE);
             onCreate(db);
         }
+
         private void loadInformation() {
             new Thread(new Runnable() {
                 @Override
@@ -107,28 +112,55 @@ public class DatabaseTable {
                 }
             }).start();
         }
+
         private void loadCities() throws IOException {
-            final Resources resources = helperContext.getResources();
-            InputStream inputStream = resources.openRawResource(R.raw.cities);
-            BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
-            try {
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    String[] strings = TextUtils.split(line, "—");
-                    if (strings.length < 2) continue;
-                    long id = addCity(strings[0], strings[1].trim());
-                    if (id < 0) {
-                        Log.e(TAG, "Unable to add city: " + strings[0].trim());
+            RestAdapter restAdapter = new RestAdapter.Builder()
+                .setEndpoint(BASE_URL)
+                .build();
+            API service = restAdapter.create(API.class);
+            Callback<List<City>> callback = new Callback<List<City>>() {
+                @Override
+                public void success(List<City> cities, Response response) {
+                    for (int i = 0; i<cities.size(); i++) {
+                        Log.d("ALARM", String.valueOf(cities.get(i).getCityId())
+                                + " " + cities.get(i).getCityName());
+                        long id = addCity(cities.get(i).getCityId(),
+                                cities.get(i).getCityName());
+                        if (id < 0) {
+                            Log.e(TAG, "Unable to add city: " + cities.get(i).getCityName());
+                        }
                     }
                 }
-            } finally {
-                reader.close();
-            }
+                @Override
+                public void failure(RetrofitError error) {
+                    Log.d("ALARM", "There are called failure");
+                }
+            };
+            service.getCity(callback); /*вызывает функцию считывания информации из REST API
+                                    в callback'e обрабатываю данные и передаю в addCity() */
+//            //реализация для добавления в SQLite таблицу из файла в raw
+//            final Resources resources = helperContext.getResources();
+//            InputStream inputStream = resources.openRawResource(R.raw.cities);
+//            BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
+//            try {
+//                String line;
+//                while ((line = reader.readLine()) != null) {
+//                    String[] strings = TextUtils.split(line, "—");
+//                    if (strings.length < 2) continue;
+//                    long id = addCity(strings[0], strings[1].trim());
+//                    if (id < 0) {
+//                        Log.e(TAG, "Unable to add city: " + strings[0].trim());
+//                    }
+//                }
+//            } finally {
+//                reader.close();
+//            }
         }
-        public long addCity(String city, String country) {
+
+        public long addCity(int cityId, String city) {
             ContentValues initialValues = new ContentValues();
+            initialValues.put(COL_CITY_ID, cityId);
             initialValues.put(COL_CITY, city);
-            initialValues.put(COL_COUNTRY, country);
 
             return database.insert(FTS_VIRTUAL_TABLE, null, initialValues);
         }
