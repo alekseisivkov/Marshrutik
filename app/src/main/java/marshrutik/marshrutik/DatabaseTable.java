@@ -21,8 +21,6 @@ public class DatabaseTable {
 
     private static final String TAG = "CitiesDatabase";
 
-    public static final String BASE_URL = "https://rocky-headland-7761.herokuapp.com/api";
-
     //колонки, которые мы включим в нашу таблицу
     public static final String COL_CITY_ID = "CITY_ID";
     public static final String COL_CITY = "CITY";
@@ -115,15 +113,15 @@ public class DatabaseTable {
 
         private void loadCities() throws IOException {
             RestAdapter restAdapter = new RestAdapter.Builder()
-                .setEndpoint(BASE_URL)
+                .setEndpoint(API.BASE_URL)
                 .build();
             API service = restAdapter.create(API.class);
             Callback<List<City>> callback = new Callback<List<City>>() {
                 @Override
                 public void success(List<City> cities, Response response) {
                     for (int i = 0; i<cities.size(); i++) {
-                        Log.d("ALARM", String.valueOf(cities.get(i).getCityId())
-                                + " " + cities.get(i).getCityName());
+//                        Log.d("ALARM", String.valueOf(cities.get(i).getCityId())
+//                                + " " + cities.get(i).getCityName());
                         long id = addCity(cities.get(i).getCityId(),
                                 cities.get(i).getCityName());
                         if (id < 0) {

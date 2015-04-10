@@ -24,7 +24,6 @@
             <meta-data
                 android:name="android.app.default_searchable"
                 android:value=".SearchResultActivity" />
-
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 

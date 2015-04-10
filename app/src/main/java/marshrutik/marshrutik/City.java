@@ -2,6 +2,7 @@ package marshrutik.marshrutik;
 
 import com.google.gson.annotations.SerializedName;
 
+//в классе хранятся и парсятся данные, которые получаются путем запроса к серверу
 public class City {
     @SerializedName("city_id") private int cityId;
     @SerializedName("city_name") private  String cityName;

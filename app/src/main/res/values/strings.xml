@@ -10,9 +10,11 @@
     <string name="action_login">Вход</string>
     <!--Кнопки-->
     <string name="button_next">Далее</string>
+    <string name="button_search">Поиск</string>
 
     <!--Подсказки-->
-    <string name="search_hint">Введите город</string>
+    <string name="search_hint_city">Введите город</string>
+    <string name="search_hint_country">Введите страну</string>
     <string name="choiceCountry">Выберите страну</string>
     <string name="choiceCity">Выберите город</string>
     <string name="title_activity_maps">MapsActivity</string>

@@ -1,5 +1,7 @@
 package marshrutik.marshrutik;
 
+import android.app.FragmentManager;
+import android.app.FragmentTransaction;
 import android.app.SearchManager;
 import android.content.Intent;
 import android.database.Cursor;
@@ -11,6 +13,13 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import org.w3c.dom.Text;
+
+import java.util.List;
+
+import retrofit.Callback;
+import retrofit.RestAdapter;
+import retrofit.RetrofitError;
+import retrofit.client.Response;
 
 
 public class SearchResultActivity extends ActionBarActivity {
@@ -56,14 +65,51 @@ public class SearchResultActivity extends ActionBarActivity {
         if (Intent.ACTION_SEARCH.equals(intent.getAction())) {
             String query = intent.getStringExtra(SearchManager.QUERY);
             Cursor cursor = databaseTable.getCityMatches(query, null);
-            TextView textView = (TextView) findViewById(R.id.textViewSearchResult);
-            if (cursor != null) {
-                textView.setText("Найдено совпадение: Город " + cursor.getString(1));
+            if (cursor != null) {   //если найдено совпадение
+                showResults(cursor);
             }
-            else {
-                textView.setText("По Вашему запросу " + query + " ничего не найдено");
+            else {  //если запрос был некорректен или неверен
+                Toast.makeText(getApplicationContext(),
+                        "No result", Toast.LENGTH_SHORT).show();
             }
         }
+
+    }
+
+    private void showResults(final Cursor cursor) {
+        TextView textView = (TextView) findViewById(R.id.textViewSearchResult);
+        textView.setText("Найдено совпадение: Город " + cursor.getString(1)); //0 - id, 1 - name
+
+        RestAdapter restAdapter = new RestAdapter.Builder()
+                .setEndpoint(API.BASE_URL)
+                .build();
+        API service = restAdapter.create(API.class);
+        service.getRoutes(Integer.valueOf(cursor.getString(0)), new Callback<List<Route>>() {
+            @Override
+            public void success(List<Route> routes, Response response) {
+                if (routes.size() != 0) {   //если есть маршруты, если база пуста, то будет 0
+                    for (int i=0; i < routes.size(); i++) {
+                        RouteFragment routeFragment = new RouteFragment();
+                        Bundle args = new Bundle();
+                        args.putString("description", routes.get(i).getRouteDescription());
+                        args.putString("title", routes.get(i).getRouteTitle());
+                        routeFragment.setArguments(args);
+
+                        FragmentManager fragmentManager = getFragmentManager();
+                        FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
+                        fragmentTransaction.add(R.id.fragmentContainer, routeFragment);
+                        fragmentTransaction.addToBackStack(null);
+                        fragmentTransaction.commit();
+                    }
+                }
+            }
+
+            @Override
+            public void failure(RetrofitError error) {
+                Toast.makeText(getApplicationContext(),
+                        "Something gonna wrong", Toast.LENGTH_SHORT).show();
+            }
+        });
 
     }
 

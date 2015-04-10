@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical" android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:id="@+id/mainLayout">
+
+    <ImageView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/imageViewRoutePicture"
+        android:layout_alignParentTop="true"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentStart="true"
+        android:src="@drawable/hermitage" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textAppearance="?android:attr/textAppearanceLarge"
+        android:text="@string/route_title"
+        android:id="@+id/textViewRouteTitle"
+        android:layout_alignParentTop="true"
+        android:layout_toRightOf="@+id/imageViewRoutePicture"
+        android:layout_alignParentRight="true"
+        android:layout_alignParentEnd="true"
+        android:paddingLeft="5dp" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textAppearance="?android:attr/textAppearanceSmall"
+        android:text="@string/route_description"
+        android:id="@+id/textViewRouteDescription"
+        android:layout_below="@+id/textViewRouteTitle"
+        android:layout_toRightOf="@+id/imageViewRoutePicture"
+        android:layout_alignParentRight="true"
+        android:layout_alignParentEnd="true"
+        android:layout_above="@+id/textViewRouteThemes"
+        android:paddingLeft="5dp" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textAppearance="?android:attr/textAppearanceSmall"
+        android:text="@string/route_themes"
+        android:id="@+id/textViewRouteThemes"
+        android:layout_alignBottom="@+id/imageViewRoutePicture"
+        android:layout_toRightOf="@+id/imageViewRoutePicture"
+        android:layout_alignParentRight="true"
+        android:layout_alignParentEnd="true"
+        android:paddingLeft="5dp" />
+</RelativeLayout>
