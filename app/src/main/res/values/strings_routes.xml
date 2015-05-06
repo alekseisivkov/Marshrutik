@@ -4,5 +4,7 @@
     <string name="route_description">Описание маршрута</string>
     <string name="route_themes">Темы маршрута</string>
 
+    <string name="button_show_map">Показать на карте</string>
+
 
 </resources>

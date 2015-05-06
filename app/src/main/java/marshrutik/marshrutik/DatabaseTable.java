@@ -26,7 +26,7 @@ public class DatabaseTable {
     public static final String COL_CITY = "CITY";
 
     private static final String DATABASE_NAME = "CitiesRU";
-    private static final int DATABASE_VERSION = 8;
+    private static final int DATABASE_VERSION = 9;
     private static final String FTS_VIRTUAL_TABLE = "FTS";
 
 

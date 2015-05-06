@@ -20,6 +20,14 @@
     <string name="title_activity_maps">MapsActivity</string>
 
     <string name="hello_world">Hello world!</string>
+    <string name="title_activity_route_info">RouteInfoActivity</string>
+    <!-- Названия для маркеров-->
+    <string name="hermitage_title">Государственный Эрмитаж</string>
+    <string name="hermitage_desc">Один из самый больших и значительных музеев Мира</string>
+    <string name="admiralt_title">ст.м. Адмиралтейская</string>
+    <string name="admiralt_desc">Новая, современная станция метро</string>
+    <string name="rusmus_title">Гос. Русский Музей</string>
+    <string name="rusmus_desc">Очень крутой мезей</string>
 
 
 </resources>

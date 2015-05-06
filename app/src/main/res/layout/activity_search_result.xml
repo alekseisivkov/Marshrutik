@@ -14,14 +14,32 @@
         android:layout_alignParentTop="true"
         android:layout_centerHorizontal="true" />
 
-    <FrameLayout
-        android:layout_width="fill_parent"
-        android:layout_height="fill_parent"
-        android:layout_alignParentLeft="true"
-        android:layout_alignParentStart="true"
-        android:id="@+id/fragmentContainer"
+    <ListView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/listView"
         android:layout_below="@+id/textViewSearchResult"
-        android:layout_alignParentBottom="true"></FrameLayout>
+        android:layout_centerHorizontal="true"
+        android:clickable="true"
+        android:paddingStart="5dp"
+        android:paddingLeft="5dp"
+        tools:ignore="RtlSymmetry" />
 
+    <ProgressBar
+        style="?android:attr/progressBarStyleLarge"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/progressBar"
+        android:layout_below="@+id/textViewSearchResult"
+        android:layout_centerHorizontal="true" />
+
+    <!--<FrameLayout-->
+        <!--android:layout_width="fill_parent"-->
+        <!--android:layout_height="fill_parent"-->
+        <!--android:layout_alignParentLeft="true"-->
+        <!--android:layout_alignParentStart="true"-->
+        <!--android:id="@+id/fragmentContainer"-->
+        <!--android:layout_below="@+id/textViewSearchResult"-->
+        <!--android:layout_alignParentBottom="true"/>-->
 
 </RelativeLayout>
