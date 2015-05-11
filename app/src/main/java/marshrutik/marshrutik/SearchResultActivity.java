@@ -151,6 +151,7 @@ public class SearchResultActivity extends ActionBarActivity {
                             new String[]{KEY_TITLE, KEY_DESCRIPTION, KEY_THEME, "ICON"},
                             new int[] {R.id.textViewRouteTitle, R.id.textViewRouteDescription,
                                     R.id.textViewRouteThemes, R.id.imageViewRoutePicture});
+                    //TODO:заменить на ListFragment
                     ListView listView = (ListView)findViewById(R.id.listView);
                     listView.setAdapter(simpleAdapter);
                     listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {

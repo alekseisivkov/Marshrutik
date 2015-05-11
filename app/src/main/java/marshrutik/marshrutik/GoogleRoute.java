@@ -3,7 +3,7 @@ package marshrutik.marshrutik;
 
 import java.util.List;
 
-//класс для обработки результатов построения маршрута Гуглом
+//РєР»Р°СЃСЃ РґР»СЏ РѕР±СЂР°Р±РѕС‚РєРё СЂРµР·СѓР»СЊС‚Р°С‚РѕРІ РїРѕСЃС‚СЂРѕРµРЅРёСЏ РјР°СЂС€СЂСѓС‚Р° Р“СѓРіР»РѕРј
 public class GoogleRoute {
 
     public List<gRoute> routes;

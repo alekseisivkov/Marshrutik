@@ -11,12 +11,16 @@
     <!--Кнопки-->
     <string name="button_next">Далее</string>
     <string name="button_search">Поиск</string>
+    <string name="button_send_routeparts">OK</string>
 
     <!--Подсказки-->
     <string name="search_hint_city">Введите город</string>
     <string name="search_hint_country">Введите страну</string>
     <string name="choiceCountry">Выберите страну</string>
     <string name="choiceCity">Выберите город</string>
+    <string name="hint_enter_route_title">Введите название маршрута</string>
+    <string name="hint_enter_route_desc">Опишите маршрут в нескольких словах</string>
+
     <string name="title_activity_maps">MapsActivity</string>
 
     <string name="hello_world">Hello world!</string>
@@ -28,6 +32,8 @@
     <string name="admiralt_desc">Новая, современная станция метро</string>
     <string name="rusmus_title">Гос. Русский Музей</string>
     <string name="rusmus_desc">Очень крутой мезей</string>
+    <string name="marker_default_title">Название точки</string>
+    <string name="marker_default_desc">Описание точки</string>
 
 
 </resources>

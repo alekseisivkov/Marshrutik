@@ -6,8 +6,11 @@ import android.content.Context;
 import android.content.Intent;
 import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.SearchView;
 import android.widget.Toast;
 
@@ -28,10 +31,28 @@ public class MainActivity extends ActionBarActivity {
         //Ассоциируем serachable конфигурацию с SearchView. Для поиска
         SearchManager searchManager =
                 (SearchManager)getSystemService(Context.SEARCH_SERVICE);
-        SearchView searchView =
+        final SearchView searchView =
                 (SearchView)menu.findItem(R.id.action_search).getActionView();
         searchView.setSearchableInfo(
                 searchManager.getSearchableInfo(getComponentName()));
+        searchView.setIconifiedByDefault(false); //это чтобы после первого нажатия сразу показывалась срока поиска
+        searchView.requestFocus();  //после открытия окошка ввода фокус был помещен в него
+        searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
+            @Override
+            public boolean onQueryTextSubmit(String query) {
+                Toast.makeText(getApplicationContext(),
+                        "submit query " + query, Toast.LENGTH_SHORT).show();
+                return false;
+            }
+
+            @Override
+            public boolean onQueryTextChange(String newText) {
+                Toast.makeText(getApplicationContext(),
+                        "on Query text changed" + newText, Toast.LENGTH_SHORT).show();
+                return false;
+            }
+        });
+        //TODO:сделать так, что бы открывалась клавиатура
         return true;
     }
 

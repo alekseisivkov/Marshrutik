@@ -9,25 +9,35 @@
     <EditText
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:id="@+id/editTextCountry"
-        android:layout_alignParentTop="true"
+        android:id="@+id/editTextCity"
         android:layout_centerHorizontal="true"
-        android:hint="@string/choiceCountry" />
+        android:hint="@string/choiceCity" />
 
     <EditText
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:id="@+id/editTextCity"
-        android:layout_below="@+id/editTextCountry"
-        android:layout_centerHorizontal="true"
-        android:hint="@string/choiceCity" />
+        android:id="@+id/editTextRouteTitle"
+        android:layout_below="@+id/editTextCity"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentStart="true"
+        android:hint="@string/hint_enter_route_title" />
+
+    <EditText
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:id="@+id/editTextRouteDecs"
+        android:layout_below="@+id/editTextRouteTitle"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentStart="true"
+        android:hint="@string/hint_enter_route_desc" />
 
     <Button
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="@string/button_next"
         android:id="@+id/buttonNext"
-        android:layout_below="@+id/editTextCity"
-        android:layout_centerHorizontal="true"
-        android:onClick="onNextButtonClicked" />
+        android:onClick="onNextButtonClicked"
+        android:layout_below="@+id/editTextRouteDecs"
+        android:layout_centerHorizontal="true" />
+
 </RelativeLayout>
