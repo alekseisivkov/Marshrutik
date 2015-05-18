@@ -1,17 +1,27 @@
 <resources>
-    <string name="app_name">Marshrutik</string>
+    <string name="app_name">Маршрутик</string>
     <string name="title_activity_search_result">Результаты поиска</string>
-    <string name="title_activity_add_route">AddRouteActivity</string>
+    <string name="title_activity_add_route">Добавление маршрута</string>
+    <string name="title_activity_register">Регистрация</string>
 
     <!--Названия элементов ActionBar-->
     <string name="action_settings">Настройки</string>
     <string name="action_search">Поиск</string>
     <string name="action_add_route">Добавить маршрут</string>
     <string name="action_login">Вход</string>
+    <string name="action_logout">Выход</string>
+    <string name="action_register">Регистрация</string>
+    <string name="action_profile">Профиль</string>
     <!--Кнопки-->
     <string name="button_next">Далее</string>
     <string name="button_search">Поиск</string>
-    <string name="button_send_routeparts">OK</string>
+    <string name="button_ok">OK</string>
+    <string name="button_cancel">Отмена</string>
+    <string name="button_send">Отправить</string>
+    <string name="button_make_optimal_route">Построить оптимальный маршрут</string>
+    <string name="button_registration">Зарегистрироваться</string>
+    <!--Ошибки-->
+    <string name="error_routeId_not_found">Ошибка, ID маршрута не найден</string>
 
     <!--Подсказки-->
     <string name="search_hint_city">Введите город</string>
@@ -20,11 +30,27 @@
     <string name="choiceCity">Выберите город</string>
     <string name="hint_enter_route_title">Введите название маршрута</string>
     <string name="hint_enter_route_desc">Опишите маршрут в нескольких словах</string>
+    <string name="hint_alert_dialog_title">Введите название точки и её краткое описание</string>
+    <string name="hint_send_route_success">Маршрут успешно добавлен.
+        После одобрения модератором, он появится в приложении</string>
+    <string name="hint_route_update_success">Маршрут успешно изменен.
+        Изменения вступят в силу немедленно</string>
+    <string name="hint_login_to_add_route">Для добавлени машрута необходимо войти</string>
+    <string name="hint_login_to_view_profile">Для просмотра своих маршрутов необходимо войти</string>
 
     <string name="title_activity_maps">MapsActivity</string>
 
     <string name="hello_world">Hello world!</string>
     <string name="title_activity_route_info">RouteInfoActivity</string>
+    <!-- Названия достопримечательностей-->
+    <string name="hermitage_name">Эрмитаж</string>
+    <string name="dvortsovaua_square">Дворцовая площадь</string>
+    <string name="isaakievskiy">Исаакиевский собор</string>
+    <string name="smolniy">Смольный собор</string>
+    <string name="petropavlovskaya">Петропавловская крепость</string>
+    <string name="spas_na_krovi">Спас-на-Крови</string>
+    <string name="LETI">СПбГЭТУ "ЛЭТИ"</string>
+
     <!-- Названия для маркеров-->
     <string name="hermitage_title">Государственный Эрмитаж</string>
     <string name="hermitage_desc">Один из самый больших и значительных музеев Мира</string>
@@ -34,6 +60,8 @@
     <string name="rusmus_desc">Очень крутой мезей</string>
     <string name="marker_default_title">Название точки</string>
     <string name="marker_default_desc">Описание точки</string>
+    <string name="marker_end_route_title">Конец</string>
+    <string name="marker_end_route_desc">Конечная точка</string>
 
 
 </resources>

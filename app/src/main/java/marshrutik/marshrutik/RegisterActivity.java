@@ -5,9 +5,7 @@ import android.animation.AnimatorListenerAdapter;
 import android.annotation.TargetApi;
 import android.app.Activity;
 import android.app.LoaderManager.LoaderCallbacks;
-import android.content.Context;
 import android.content.CursorLoader;
-import android.content.Intent;
 import android.content.Loader;
 import android.content.SharedPreferences;
 import android.database.Cursor;
@@ -17,7 +15,9 @@ import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.ContactsContract;
+import android.text.Editable;
 import android.text.TextUtils;
+import android.text.TextWatcher;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
@@ -30,11 +30,6 @@ import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -47,7 +42,7 @@ import retrofit.client.Response;
 /**
  * A login screen that offers login via email/password.
  */
-public class LoginActivity extends Activity implements LoaderCallbacks<Cursor> {
+public class RegisterActivity extends Activity implements LoaderCallbacks<Cursor> {
 
     /**
      * A dummy authentication store containing known user names and passwords.
@@ -56,9 +51,6 @@ public class LoginActivity extends Activity implements LoaderCallbacks<Cursor> {
     private static final String[] DUMMY_CREDENTIALS = new String[]{
             "foo@example.com:hello", "bar@example.com:world"
     };
-    //название файла, где хранится токен пользователя
-    public static final String TOKEN_FILENAME = "tokenStorage";
-    public static final String TOKEN = "token";
     /**
      * Keep track of the login task to ensure we can cancel it if requested.
      */
@@ -67,40 +59,32 @@ public class LoginActivity extends Activity implements LoaderCallbacks<Cursor> {
     // UI references.
     private AutoCompleteTextView mEmailView;
     private EditText mPasswordView;
+    private EditText mLoginView;
+    private EditText mNameView;
+    private EditText mSurnameView;
+    private EditText cityName;
+    private Button mRegisterButton;
+
+    private int cityId;
     private View mProgressView;
     private View mLoginFormView;
 
-    public void onRegistrationButtonClick(View view) {
-        //TODO: сделать обработку, если введены данные в поля, то передавать их в активность регистрации
-        Intent registrationIntent = new Intent(getApplicationContext(), RegisterActivity.class);
-        startActivity(registrationIntent);
-    }
-
-    //для обработки ответа сервра о логине
-    public class LoginAnswer {
-        private Attributes attr;
-        class Attributes {
-            private String token;
-        }
-        public String  getToken() {
-            return attr.token;
-        }
-    }
-
-    private SharedPreferences tokenPrefs;
+    private SharedPreferences tokenPrefs; //в файле хранится токен пользователя
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_login);
+        setContentView(R.layout.activity_register);
+
+        cityId = -1;
+
+        tokenPrefs = getSharedPreferences(LoginActivity.TOKEN_FILENAME, MODE_PRIVATE);
 
         // Set up the login form.
-        mEmailView = (AutoCompleteTextView) findViewById(R.id.email);
+        mEmailView = (AutoCompleteTextView) findViewById(R.id.emailView);
         populateAutoComplete();
 
-        tokenPrefs = getSharedPreferences(TOKEN_FILENAME, Context.MODE_PRIVATE);
-
-        mPasswordView = (EditText) findViewById(R.id.password);
+        mPasswordView = (EditText) findViewById(R.id.passwordView);
         mPasswordView.setOnEditorActionListener(new TextView.OnEditorActionListener() {
             @Override
             public boolean onEditorAction(TextView textView, int id, KeyEvent keyEvent) {
@@ -111,17 +95,44 @@ public class LoginActivity extends Activity implements LoaderCallbacks<Cursor> {
                 return false;
             }
         });
+        mLoginView = (EditText)findViewById(R.id.loginView);
+        mNameView = (EditText)findViewById(R.id.name);
+        mSurnameView = (EditText)findViewById(R.id.surname);
+        cityName = (EditText)findViewById(R.id.editTextCity);
 
-        Button mEmailSignInButton = (Button) findViewById(R.id.email_sign_in_button);
-        mEmailSignInButton.setOnClickListener(new OnClickListener() {
+        mRegisterButton = (Button)findViewById(R.id.StartRegisterButton);
+        mRegisterButton.setOnClickListener(new OnClickListener() {
             @Override
             public void onClick(View view) {
                 attemptLogin();
             }
         });
+        mRegisterButton.setEnabled(false);
 
-        mLoginFormView = findViewById(R.id.login_form);
-        mProgressView = findViewById(R.id.login_progress);
+        cityName.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+                mRegisterButton.setEnabled(false);
+            }
+
+            @Override
+            public void afterTextChanged(Editable editable) {
+                DatabaseTable databaseTable = new DatabaseTable(getApplicationContext());
+                Cursor cursor = databaseTable.getCityMatches(editable.toString(), null);
+                if (cursor != null) {
+                    mRegisterButton.setEnabled(true);
+                    cityId = cursor.getInt(0);
+                    Log.d("TAG"," city id :" + cityId);
+                }
+            }
+        });
+        mLoginFormView = findViewById(R.id.login_form_register);
+        mProgressView = findViewById(R.id.login_progress_regsiter);
     }
 
     private void populateAutoComplete() {
@@ -138,6 +149,9 @@ public class LoginActivity extends Activity implements LoaderCallbacks<Cursor> {
         if (mAuthTask != null) {
             return;
         }
+        if (cityId == -1) {
+            return;
+        }
 
         // Reset errors.
         mEmailView.setError(null);
@@ -146,10 +160,13 @@ public class LoginActivity extends Activity implements LoaderCallbacks<Cursor> {
         // Store values at the time of the login attempt.
         String email = mEmailView.getText().toString();
         String password = mPasswordView.getText().toString();
+        String login = mLoginView.getText().toString();
+        String name = mNameView.getText().toString();
+        String surname = mSurnameView.getText().toString();
+
 
         boolean cancel = false;
         View focusView = null;
-
 
         // Check for a valid password, if the user entered one.
         if (!TextUtils.isEmpty(password) && !isPasswordValid(password)) {
@@ -184,85 +201,34 @@ public class LoginActivity extends Activity implements LoaderCallbacks<Cursor> {
                     .setLogLevel(RestAdapter.LogLevel.FULL)
                     .build();
             API service = restAdapter.create(API.class);
-            service.makeLogin(email, password, new Callback<LoginAnswer>() {
-                @Override
-                public void success(LoginAnswer loginAnswer, Response response) {
-                    Log.d("TAG", loginAnswer.getToken());
-                    if (storeToken(loginAnswer.getToken())) {
-                        Log.d("TAG", "store success");
-                        Log.d("TAG", "token from file: " + getToken());
-                    }
-                    else {
-                        Log.d("TAG", "store failed");
-                    }
-                    showProgress(false);
-                    finish();
-                }
+            service.registration(login, password, email, name, surname, cityId,
+                    new Callback<LoginActivity.LoginAnswer>() {
+                        @Override
+                        public void success(LoginActivity.LoginAnswer answer, Response response) {
+                            showProgress(false);
+                            Toast.makeText(getApplicationContext(),
+                                    "YESS", Toast.LENGTH_SHORT).show();
+                            Log.d("TAG", "token: " + answer.getToken());
+                            SharedPreferences.Editor editor = tokenPrefs.edit();
+                            editor.putString(LoginActivity.TOKEN, answer.getToken());
+                            editor.apply();
+                        }
 
-                @Override
-                public void failure(RetrofitError error) {
-                    Log.e("RETROFIT", error.getMessage());
-                    Toast.makeText(getApplicationContext(),
-                            "Проверьте правильно введенных данных", Toast.LENGTH_SHORT).show();
-                    showProgress(false);
-                }
-            });
+                        @Override
+                        public void failure(RetrofitError error) {
+                            showProgress(false);
+                            Toast.makeText(getApplicationContext(),
+                                    "NOO", Toast.LENGTH_SHORT).show();
+                            Log.e("RETROFIT", error.getMessage());
+                        }
+                    });
+
         }
-    }
-    public String getToken() {
-//        if (!checkTokenFileExists()) {
-//            return "";
-//        }
-//        FileInputStream fileInputStream = null;
-//        try {
-//            fileInputStream = openFileInput(TOKEN_FILENAME);
-//            String token = "";
-//            int c;
-//            while ( (c = fileInputStream.read()) != -1) {
-//                token = token + Character.toString((char) c);
-//            }
-//            fileInputStream.close();
-//            return token;
-//        } catch (FileNotFoundException e) {
-//            e.printStackTrace();
-//            Log.e("FILE OPEN ERROR", "No file exists");
-//            return "";
-//        } catch (IOException e) {
-//            e.printStackTrace();
-//            return "";
-//        }
-        return tokenPrefs.getString(TOKEN, null);
-    }
-    public boolean checkTokenFileExists() {
-        File file = new File(TOKEN_FILENAME);
-        boolean test = file.exists();
-        test = file.isFile();
-        return file.exists();
-    }
-    //TODO: вынести эти функции в отдельный класс
-    public boolean storeToken(String token) {
-//        try {
-//            FileOutputStream fileOutputStream = openFileOutput(TOKEN_FILENAME, MODE_PRIVATE);
-//            fileOutputStream.write(token.getBytes());
-//            fileOutputStream.close();
-//            return true;
-//        } catch (FileNotFoundException e) {
-//            Log.e("OPEN STREAM", e.getMessage());
-//            return false;
-//        } catch (IOException e) {
-//            e.printStackTrace();
-//            Log.e("WRITE FILE", e.getMessage());
-//            return false;
-//        }
-        SharedPreferences.Editor editor = tokenPrefs.edit();
-        editor.putString(TOKEN, token);
-        editor.apply();
-        return true;
     }
 
     private boolean isEmailValid(String email) {
         //TODO: Replace this with your own logic
-        return email.contains("");
+        return email.contains("@");
     }
 
     private boolean isPasswordValid(String password) {
@@ -354,7 +320,7 @@ public class LoginActivity extends Activity implements LoaderCallbacks<Cursor> {
     private void addEmailsToAutoComplete(List<String> emailAddressCollection) {
         //Create adapter to tell the AutoCompleteTextView what to show in its dropdown list.
         ArrayAdapter<String> adapter =
-                new ArrayAdapter<String>(LoginActivity.this,
+                new ArrayAdapter<String>(RegisterActivity.this,
                         android.R.layout.simple_dropdown_item_1line, emailAddressCollection);
 
         mEmailView.setAdapter(adapter);
@@ -381,12 +347,6 @@ public class LoginActivity extends Activity implements LoaderCallbacks<Cursor> {
             try {
                 // Simulate network access.
                 Thread.sleep(2000);
-                RestAdapter restAdapter = new RestAdapter.Builder()
-                        .setEndpoint(API.BASE_URL)
-                        .setLogLevel(RestAdapter.LogLevel.FULL)
-                        .build();
-                API service = restAdapter.create(API.class);
-//                service.makeLogin(mEmail, mPassword);
             } catch (InterruptedException e) {
                 return false;
             }
@@ -398,7 +358,7 @@ public class LoginActivity extends Activity implements LoaderCallbacks<Cursor> {
                     return pieces[1].equals(mPassword);
                 }
             }
-            Log.d("TAG", "there have to be registration");
+
             // TODO: register the new account here.
             return true;
         }
@@ -423,6 +383,4 @@ public class LoginActivity extends Activity implements LoaderCallbacks<Cursor> {
         }
     }
 }
-
-
 

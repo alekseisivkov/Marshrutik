@@ -1,15 +1,20 @@
 package marshrutik.marshrutik;
 
 import android.app.Activity;
+import android.app.AlertDialog;
+import android.content.DialogInterface;
+import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
-import android.widget.TextView;
+import android.widget.EditText;
 import android.widget.Toast;
 
+import com.google.android.gms.maps.CameraUpdate;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.MapFragment;
@@ -33,38 +38,84 @@ import retrofit.client.Response;
 public class MapsActivity extends Activity implements OnMapReadyCallback {
     //символизирует, вызвана ли активность для добавления, или для просмотра маршрута
     private boolean isForAddRoute;
+    //если активность вызвана для изменения маршрута
+    private boolean isForRouteUpdate;
 
-    //координаты Эрмитажа
-    private final static double LAT_HERM1 = 59.939832;
-    private final static double LAT_HERM2 = 30.31456;
-    //координаты ст.м. Адмиралтейская
-    private final static double LAT_ADM1 = 59.93587;
-    private final static double LAT_ADM2 = 30.315201;
-    //координаты Рос. гос. музея
-    private final static double LAT_RUSMUS1 = 59.93379058;
-    private final static double LAT_RUSMUS2 = 30.3203398;
+    //по умолчанию, карта центрируется на Эрмитаже в Петербург
+    private final static double LAT_DEFAULT = 59.939832;
+    private final static double LNG_DEFAULT = 30.31456;
 
     private ArrayList<Marker> markerList;
     private ArrayList<Polyline> polylines;
-    private TextView textView;
+    private int routeId;
+    private LatLng centerMap;
     //TODO: заменить на адекватный токен
     private static final String TEMP_TOKEN =
             "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJleHAiOjE0NjA3NTY1MjE2Mzcs" +
                     "InVzZXJuYW1lIjoibG9naW4iLCJmaXJzdG5hbWUiOiJ1c2VyIiwibGFzdG" +
                     "5hbWUiOiJ1c2VyIn0.ajZfhgVvmDRnLjj-40lSjEIGVI2FSGQlvTfaOj7GkD0";
 
+    //классы, для отправки на сервер в виде {token:[], array_parts:[lat, lng, title, id, desc and etc.}
+    public class RoutePartsForSend {
+        private String token;
+        private List<RouteParts> array_parts;
+        RoutePartsForSend() {
+            array_parts = new ArrayList<>();
+        }
+
+        public void setToken(String mToken) {
+            this.token = mToken;        }
+    }
+    private class RouteParts {
+        private double routepart_start_latitude;
+        private double routepart_start_longitude;
+        private double routepart_end_latitude;
+        private double routepart_end_longitude;
+        private String routepart_description;
+        private int route_id;
+        private int part_id;
+        private String routepart_title;
+        private int routepart_id;
+
+        public void setStartLat(double lat) { this.routepart_start_latitude = lat; }
+        public void setStartLong(double lng) { this.routepart_start_longitude = lng; }
+        public void setEndLat(double lat) {this.routepart_end_latitude = lat; }
+        public void setEndLong(double lng) {this.routepart_end_longitude = lng; }
+        public void setRouteId(int id) { this.route_id = id; }
+        public void setPartId(int id) {this.part_id = id; }
+        public void setRoutePartDesc(String desc) {this.routepart_description = desc; }
+        public void setRoutepartTitle(String title) {this.routepart_title = title; }
+        public void setRoutepartId(int id) { this.routepart_id = id; }
+    }
+    //класс для получения информации от Google о координатах города. Для центрирования карты
+    public class CityGeoCoordinates {
+        public List<Results> results;
+
+        public LatLng getLatLng() {
+            return new LatLng(this.results.get(0).geometry.location.lat, results.get(0).geometry.location.lng);
+        }
+        class Results {
+            Geometry geometry;
+        }
+        class Geometry {
+            LocationN location;
+        }
+        class LocationN {
+            double lat;
+            double lng;
+        }
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_maps);
-        if (getIntent().getBooleanExtra("ADD", false)) {
-            isForAddRoute = true;
-        }
-        else {
-            isForAddRoute = false;
-        }
+        centerMap = new LatLng(LAT_DEFAULT, LNG_DEFAULT);
+        isForAddRoute = getIntent().getBooleanExtra("ADD", false);  //если карта для отображения маршрута - true, иначе - false
+        isForRouteUpdate = getIntent().getBooleanExtra(SearchResultActivity.KEY_UPDATE, false);
         markerList = new ArrayList<>();
         polylines = new ArrayList<>();
+        routeId = getIntent().getIntExtra(SearchResultActivity.KEY_ID, -1);
 
         MapFragment map = (MapFragment)getFragmentManager()
                 .findFragmentById(R.id.map);
@@ -93,167 +144,21 @@ public class MapsActivity extends Activity implements OnMapReadyCallback {
 
         return super.onOptionsItemSelected(item);
     }
-    //классы, для отправки на сервер в виде {token:[], array_parts:[lat, lng, title, id, desc and etc.}
-    public class RoutePartsForSend {
-        private String token;
-        private List<RouteParts> array_parts;
-        RoutePartsForSend() {
-            array_parts = new ArrayList<>();
-        }
-
-        public void setToken(String mToken) {
-            this.token = mToken;        }
-        }
-    private class RouteParts {
-        private double routepart_start_latitude;
-        private double routepart_start_longitude;
-        private double routepart_end_latitude;
-        private double routepart_end_longitude;
-        private String routepart_description;
-        private int route_id;
-        private int part_id;
-        private String routepart_title;
-
-        public void setStartLat(double lat) { this.routepart_start_latitude = lat; }
-        public void setStartLong(double lng) { this.routepart_start_longitude = lng; }
-        public void setEndLat(double lat) {this.routepart_end_latitude = lat; }
-        public void setEndLong(double lng) {this.routepart_end_longitude = lng; }
-        public void setRouteId(int id) { this.route_id = id; }
-        public void setPartId(int id) {this.part_id = id; }
-        public void setRoutePartDesc(String desc) {this.routepart_description = desc; }
-        public void setRoutepartTitle(String title) {this.routepart_title = title; }
-    }
 
     @Override
     public void onMapReady(final GoogleMap map) {
-        if (isForAddRoute) {    //если активность вызвана для добавления маршрута\
-            Button sendButton = (Button)findViewById(R.id.buttonSend);
-            sendButton.setVisibility(View.VISIBLE);
-            sendButton.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    RoutePartsForSend routes = new RoutePartsForSend();
-                    routes.setToken(TEMP_TOKEN);
-                    for (int i = 0; i < markerList.size()-1; i++) {
-                        Log.d("TAG", "points: " + markerList.get(i).getPosition() + " ");
-                        RouteParts routeParts = new RouteParts();
-                        routeParts.setStartLat(markerList.get(i).getPosition().latitude);
-                        routeParts.setStartLong(markerList.get(i).getPosition().longitude);
-                        routeParts.setEndLat(markerList.get(i + 1).getPosition().latitude);
-                        routeParts.setEndLong(markerList.get(i + 1).getPosition().longitude);
-                        routeParts.setRouteId(16);
-                        routeParts.setPartId(i+1);
-                        routeParts.setRoutepartTitle("Default Title");
-                        routeParts.setRoutePartDesc("Default Description");
-                        routes.array_parts.add(routeParts);
-                    }
-                    RestAdapter restAdapter = new RestAdapter.Builder()
-                            .setEndpoint(API.BASE_URL)
-                            .setLogLevel(RestAdapter.LogLevel.FULL) //TODO: убрать full level
-                            .build();
-                    API service = restAdapter.create(API.class);
-                    service.sendRouteParts(routes, new Callback<Response>() {
-                        @Override
-                        public void success(Response response, Response response2) {
-                                        Toast.makeText(getApplicationContext(),
-                                                "YEEES", Toast.LENGTH_SHORT).show();
-                            finish();
-                        }
-
-                        @Override
-                        public void failure(RetrofitError error) {
-                                        Toast.makeText(getApplicationContext(),
-                                                "NOOO", Toast.LENGTH_SHORT).show();
-                        }
-                    });
-                }
-            });
-
-            map.moveCamera(CameraUpdateFactory.newLatLngZoom(
-                    new LatLng(LAT_HERM1, LAT_HERM2), 14));
-
-            map.setOnMapLongClickListener(new GoogleMap.OnMapLongClickListener() {
-                @Override
-                public void onMapLongClick(LatLng latLng) {
-                    Marker marker = map.addMarker(new MarkerOptions().position(latLng)
-                            .title(getResources().getString(R.string.marker_default_title))
-                            .snippet(getResources().getString(R.string.marker_default_desc)));
-                    marker.setDraggable(true);
-                    markerList.add(marker);
-                    updateRoute(map);
-                }
-            });
-            //для динамического обновления полилиний маршрута
-            map.setOnMarkerDragListener(new GoogleMap.OnMarkerDragListener() {
-                @Override
-                public void onMarkerDragStart(Marker marker) {
-
-                }
-
-                @Override
-                public void onMarkerDrag(Marker marker) {
-
-                }
-
-                @Override
-                public void onMarkerDragEnd(Marker marker) {
-                    updateRoute(map);
-                }
-            });
-            //свой InfoWindow для того, чтобы потом в нем динамически изменять title и snippet of marker
-            map.setInfoWindowAdapter(new GoogleMap.InfoWindowAdapter() {
-                @Override
-                public View getInfoWindow(Marker marker) {
-                    return null;
-                }
-
-                @Override
-                public View getInfoContents(Marker marker) {
-                    View view = getLayoutInflater().inflate(R.layout.info_window, null);
-                    textView = (TextView)view.findViewById(R.id.tvMarkerTitle);
-                    textView.setText("getInfoContents");
-                    return view;
-                }
-            });
-
-            map.setOnInfoWindowClickListener(new GoogleMap.OnInfoWindowClickListener() {
-                @Override
-                public void onInfoWindowClick(Marker marker) {
-                    Toast.makeText(getApplicationContext(),
-                            "On Info Window clicked", Toast.LENGTH_SHORT).show();
-                    textView = (TextView)findViewById(R.id.tvMarkerTitle);
-                    textView.setText("NEW Text here");
-                }
-            });
+        if (isForAddRoute || isForRouteUpdate) {    //если активность вызвана для добавления маршрута
+            if (isForRouteUpdate) {
+                drawRouteOnMap(map);
+            }
+            makeMapEditable(map);
         }
+        //isForAddRoute = false
         else {      //если для отображения маршрута
-            map.moveCamera(CameraUpdateFactory.newLatLngZoom(
-                    new LatLng(LAT_HERM1, LAT_HERM2), 14));
-            map.addMarker(new MarkerOptions()
-                    .position(new LatLng(LAT_HERM1, LAT_HERM2))
-                    .title(getResources().getString(R.string.hermitage_title))
-                    .snippet(getResources().getString(R.string.hermitage_desc)));
-            map.addMarker(new MarkerOptions()
-                    .position(new LatLng(LAT_ADM1, LAT_ADM2))
-                    .title(getResources().getString(R.string.admiralt_title))
-                    .snippet(getResources().getString(R.string.admiralt_desc)));
-            map.addMarker(new MarkerOptions()
-                    .position(new LatLng(LAT_RUSMUS1, LAT_RUSMUS2))
-                    .title(getResources().getString(R.string.rusmus_title))
-                    .snippet(getResources().getString(R.string.rusmus_desc)));
-
-            String origin = String.valueOf(LAT_HERM1) + "," + String.valueOf(LAT_HERM2);
-            String destination = String.valueOf(LAT_ADM1) + "," + String.valueOf(LAT_ADM2);
-            Log.d("TAG", "origin " + origin);
-
-            makeRoute(origin, destination, map);
-            origin = destination;
-            destination = String.valueOf(LAT_RUSMUS1) + "," + String.valueOf(LAT_RUSMUS2);
-            makeRoute(origin, destination, map);
+            drawRouteOnMap(map);
         }
     }
     private void updateRoute(GoogleMap map) {
-//        map.clear();
         for (int i = 0; i < polylines.size(); i++) {
             polylines.get(i).remove();
         }
@@ -265,8 +170,252 @@ public class MapsActivity extends Activity implements OnMapReadyCallback {
             }
         }
     }
+    private void drawRouteOnMap(GoogleMap map){
+        //TODO: добавить проверку на наличие данных
+        int size = getIntent().getIntExtra(RouteInfoActivity.KEY_QUANTITY_ROUTEPART, -1);
+        Intent prevIntent = getIntent();
+        if (size != -1) {
+            centerMap = StringToLatLng(prevIntent.getStringExtra(RouteInfoActivity.KEY_START_ROUTEPART + 0));
+            map.moveCamera(CameraUpdateFactory.newLatLngZoom(centerMap, 14));
+            for (int i = 0; i < size; i++) {
+                Marker markerEnd = null;
+                if (i > 0 ) {
+                    makeRoute(prevIntent.getStringExtra(RouteInfoActivity.KEY_START_ROUTEPART + i),
+                            prevIntent.getStringExtra(RouteInfoActivity.KEY_START_ROUTEPART + (i-1)), map); }
+                if (i == size - 1) {
+                    makeRoute(prevIntent.getStringExtra(RouteInfoActivity.KEY_START_ROUTEPART + i),
+                            prevIntent.getStringExtra(RouteInfoActivity.KEY_END_ROUTEPART + i), map);
+                    markerEnd = map.addMarker(new MarkerOptions()
+                            .position(StringToLatLng(
+                                    prevIntent.getStringExtra(RouteInfoActivity.KEY_END_ROUTEPART+i)))
+                            .title(getResources().getString(R.string.marker_end_route_title))
+                            .snippet(getResources().getString(R.string.marker_end_route_desc)));
+                }
+                Marker marker = map.addMarker(new MarkerOptions()
+                        .position(StringToLatLng(
+                                prevIntent.getStringExtra(RouteInfoActivity.KEY_START_ROUTEPART + i)))
+                        .title(prevIntent.getStringExtra(RouteInfoActivity.KEY_TITLE_ROUTEPART + i))
+                        .snippet(prevIntent.getStringExtra(RouteInfoActivity.KEY_DESC_ROUTEPART + i)));
+                if (isForRouteUpdate) {
+                    markerList.add(marker);
+                    if (i == size - 1) {
+                        markerList.add(markerEnd);
+                        markerEnd.setDraggable(true);
+                    }
+                    marker.setDraggable(true);
+                    updateRoute(map);
+                }
+
+            }
+        }
+    }
+    //функция добавления возможностей для редактирования маркеров, названий и их перетаскивания
+    private void makeMapEditable(final GoogleMap map) {
+        //перемещение карты в центр города
+        if (isForAddRoute) moveCameraOnMap(map);   //если для добавление, то так, если
+        //кнопка отправки маршрута на сервер
+        Button sendButton = (Button)findViewById(R.id.buttonSend);
+        sendButton.setVisibility(View.VISIBLE);
+        sendButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                final RoutePartsForSend routes = new RoutePartsForSend();     //TODO: добавить AlertDialog подтверждения отправки маршрута
+                routes.setToken(TEMP_TOKEN);
+                for (int i = 0; i < markerList.size() - 1; i++) {
+                    Log.d("TAG", "points: " + markerList.get(i).getPosition() + " ");
+                    final RouteParts routeParts = new RouteParts();
+                    routeParts.setStartLat(markerList.get(i).getPosition().latitude);
+                    routeParts.setStartLong(markerList.get(i).getPosition().longitude);
+                    routeParts.setEndLat(markerList.get(i + 1).getPosition().latitude);
+                    routeParts.setEndLong(markerList.get(i + 1).getPosition().longitude);
+                    if (isForRouteUpdate) {
+                        routeParts.setRoutepartId(getIntent().getIntExtra(RouteInfoActivity.KEY_ROUTEPART_ID+i, -1));
+                    }
+                    if (routeId != -1) {
+                        routeParts.setRouteId(routeId);
+                    } else {
+                        Toast.makeText(getApplicationContext(),
+                                R.string.error_routeId_not_found, Toast.LENGTH_SHORT).show();
+                    }
+                    routeParts.setPartId(i + 1);
+                    routeParts.setRoutepartTitle(markerList.get(i).getTitle());
+                    routeParts.setRoutePartDesc(markerList.get(i).getSnippet());
+                    routes.array_parts.add(routeParts);
+//                    //так как у Севы сделаны PUT только по одной части, отсылаем много запросов и удаляем из массива отосланные
+//                    if (isForRouteUpdate) {
+//                        RestAdapter restAdapter = new RestAdapter.Builder()
+//                                .setEndpoint(API.BASE_URL)
+//                                .setLogLevel(RestAdapter.LogLevel.FULL)
+//                                .build();
+//                        API service = restAdapter.create(API.class);
+//                        service.updateRoutepart(routes, new Callback<Response>() {
+//                            @Override
+//                            public void success(Response response, Response response2) {
+//                                Toast.makeText(getApplicationContext(),
+//                                        "sucess", Toast.LENGTH_SHORT).show();
+//                                routes.array_parts.remove(routeParts);
+//                            }
+//
+//                            @Override
+//                            public void failure(RetrofitError error) {
+//                                Toast.makeText(getApplicationContext(),
+//                                        "Something gonna wrong", Toast.LENGTH_SHORT).show();
+//                                Log.e("RETROFIT", error.getMessage());
+//                            }
+//                        });
+//
+//                    }
+
+                }
+
+                RestAdapter restAdapter = new RestAdapter.Builder()
+                        .setEndpoint(API.BASE_URL)
+                        .setLogLevel(RestAdapter.LogLevel.FULL) //TODO: убрать full level
+                        .build();
+                API service = restAdapter.create(API.class);
+                if (isForAddRoute) {
+                    service.sendRouteParts(routes, new Callback<Response>() {
+                        @Override
+                        public void success(Response response, Response response2) {
+                            Toast.makeText(getApplicationContext(),
+                                    R.string.hint_send_route_success, Toast.LENGTH_LONG).show();
+                            finish();
+                        }
+
+                        @Override
+                        public void failure(RetrofitError error) {
+                            Toast.makeText(getApplicationContext(),
+                                    "NOOO", Toast.LENGTH_SHORT).show();
+                            Log.e("RETROFIT", error.getMessage());
+                        }
+                    });
+                }
+                else if (isForRouteUpdate) {
+                    service.updateRoutepart(routes, new Callback<Response>() {
+                        @Override
+                        public void success(Response response, Response response2) {
+                            Toast.makeText(getApplicationContext(),
+                                    R.string.hint_route_update_success, Toast.LENGTH_SHORT).show();
+                            finish();
+                        }
+
+                        @Override
+                        public void failure(RetrofitError error) {
+                            Toast.makeText(getApplicationContext(),
+                                    "Something gonna wrong", Toast.LENGTH_SHORT).show();
+                            Log.e("RETROFIT", error.getMessage());
+                        }
+                    });
+                }
+            }
+        });
+
+        if (isForAddRoute) {
+            map.setOnMapLongClickListener(new GoogleMap.OnMapLongClickListener() {
+                @Override
+                public void onMapLongClick(LatLng latLng) {
+                    Marker marker = map.addMarker(new MarkerOptions().position(latLng)
+                            .title(getResources().getString(R.string.marker_default_title))
+                            .snippet(getResources().getString(R.string.marker_default_desc)));
+                    marker.setDraggable(true);
+                    markerList.add(marker);
+                    updateRoute(map);
+                }
+            });
+        }
+        //для динамического обновления полилиний маршрута
+        map.setOnMarkerDragListener(new GoogleMap.OnMarkerDragListener() {
+            @Override
+            public void onMarkerDragStart(Marker marker) {
+
+            }
+
+            @Override
+            public void onMarkerDrag(Marker marker) {
+//                    updateRoute(map);     пока не включал, не уверен, что хорошо скажется на производительности
+            }
+
+            @Override
+            public void onMarkerDragEnd(Marker marker) {
+                updateRoute(map);
+            }
+        });
+
+//            map.setInfoWindowAdapter(new GoogleMap.InfoWindowAdapter() {
+//                @Override
+//                public View getInfoWindow(Marker marker) {
+//                    return null;
+//                }
+//
+//                @Override
+//                public View getInfoContents(Marker marker) {
+//                    return getLayoutInflater().inflate(R.layout.info_window, null);
+//                }
+//            });
+
+        //свой InfoWindow для того, чтобы потом в нем динамически изменять title и snippet of marker
+        map.setOnInfoWindowClickListener(new GoogleMap.OnInfoWindowClickListener() {
+            @Override
+            public void onInfoWindowClick(final Marker marker) {
+                LayoutInflater factory = LayoutInflater.from(MapsActivity.this);
+                final View editTextView = factory.inflate(R.layout.alert_two_edittext, null);
+
+                final EditText editTextTitle = (EditText)editTextView.findViewById(R.id.editTextTitleRoute);
+                final EditText editTextDesc = (EditText)editTextView.findViewById(R.id.editTextDescRoute);
+                //TODO: сделать, чтобы при появлении диалога выскакивала клавиатура
+                AlertDialog alertDialog = new AlertDialog.Builder(MapsActivity.this)
+                        .setTitle(R.string.hint_alert_dialog_title)
+                        .setView(editTextView)
+                        .setPositiveButton(R.string.button_ok, new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                marker.setTitle(editTextTitle.getText().toString());
+                                marker.setSnippet(editTextDesc.getText().toString());
+                                marker.hideInfoWindow();
+                                marker.showInfoWindow();
+                                dialog.dismiss();
+                            }
+                        })
+                        .setNegativeButton(R.string.button_cancel, null)
+                        .create();
+                alertDialog.show();
+            }
+        });
+    }
+
+    private void moveCameraOnMap(final GoogleMap map) {
+        RestAdapter restAdapter = new RestAdapter.Builder()
+                .setEndpoint(API.BASE_GOOGLEAPI_URL)
+                .setLogLevel(RestAdapter.LogLevel.FULL)
+                .build();
+        API service = restAdapter.create(API.class);
+        service.getCityGeoCoord(getIntent().getStringExtra(AddRouteActivity.KEY_CITY_NAME),
+                new Callback<CityGeoCoordinates>() {
+                    @Override
+                    public void success(CityGeoCoordinates cityGeoCoordinates, Response response) {
+                        Toast.makeText(getApplicationContext(),
+                                "YESS", Toast.LENGTH_SHORT).show();
+                        centerMap = cityGeoCoordinates.getLatLng();
+                        map.moveCamera(CameraUpdateFactory.newLatLngZoom(
+                                centerMap, 12));
+                    }
+
+                    @Override
+                    public void failure(RetrofitError error) {
+                        Toast.makeText(getApplicationContext(),
+                                "NOO", Toast.LENGTH_SHORT).show();
+                        Log.e("RETROFIT", error.getMessage());
+                    }
+                });
+    }
+
+    //function to transfer latitude\longtitude to String
     private String latToString(LatLng latLng) {
         return String.valueOf(latLng.latitude) + "," + String.valueOf(latLng.longitude);
+    }
+    private LatLng StringToLatLng(String coords) {
+        String[] latlngs = coords.split(",");
+        return new LatLng(Double.parseDouble(latlngs[0]), Double.parseDouble(latlngs[1]));
     }
 
     //функция, которая рисует маршрут по данных гугла между двумя точка старта и финиша

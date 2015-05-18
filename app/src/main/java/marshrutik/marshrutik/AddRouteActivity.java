@@ -1,6 +1,7 @@
 package marshrutik.marshrutik;
 
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
@@ -25,7 +26,11 @@ public class AddRouteActivity extends ActionBarActivity {
     private int cityId;
     private EditText edTeRouteTitle;
     private EditText edTeRouteDesc;
-    //TODO: заменить на адекватный токен
+
+    public static final String KEY_CITY_NAME = "CITY_NAME";
+    private SharedPreferences tokenPrefs;
+
+    //TODO: Р·Р°РјРµРЅРёС‚СЊ РЅР° Р°РґРµРєРІР°С‚РЅС‹Р№ С‚РѕРєРµРЅ
     private static final String TEMP_TOKEN =
             "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJleHAiOjE0NjA3NTY1MjE2Mzcs" +
                     "InVzZXJuYW1lIjoibG9naW4iLCJmaXJzdG5hbWUiOiJ1c2VyIiwibGFzdG" +
@@ -41,11 +46,13 @@ public class AddRouteActivity extends ActionBarActivity {
         edTeRouteTitle = (EditText)findViewById(R.id.editTextRouteTitle);
         edTeRouteDesc = (EditText)findViewById(R.id.editTextRouteDecs);
 
-        nextButton.setEnabled(false); //без ввода правильного города, дальше уйти нельзя
+        tokenPrefs = getSharedPreferences(LoginActivity.TOKEN_FILENAME, MODE_PRIVATE);
+
+        nextButton.setEnabled(false); //Р±РµР· РІРІРѕРґР° РїСЂР°РІРёР»СЊРЅРѕРіРѕ РіРѕСЂРѕРґР°, РґР°Р»СЊС€Рµ СѓР№С‚Рё РЅРµР»СЊР·СЏ
         edTeRouteTitle.setEnabled(false);
         edTeRouteDesc.setEnabled(false);
 
-        //для того, чтобы перейти далее можно было если город существует в базе
+        //РґР»СЏ С‚РѕРіРѕ, С‡С‚РѕР±С‹ РїРµСЂРµР№С‚Рё РґР°Р»РµРµ РјРѕР¶РЅРѕ Р±С‹Р»Рѕ РµСЃР»Рё РіРѕСЂРѕРґ СЃСѓС‰РµСЃС‚РІСѓРµС‚ РІ Р±Р°Р·Рµ
         edTeCityName.addTextChangedListener(new TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {
@@ -98,34 +105,48 @@ public class AddRouteActivity extends ActionBarActivity {
         Log.d("TAG", "city name " + edTeCityName.getText().toString() + " city id " + cityId);
         Log.d("TAG", "route title " + edTeRouteTitle.getText().toString() + " route desc " + edTeRouteDesc.getText());
         if (edTeRouteTitle.getText().length() != 0 || edTeRouteDesc.getText().length() != 0) {
-            RestAdapter restAdapter = new RestAdapter.Builder()
+
+            Log.d("tag", "token from add route: " + tokenPrefs.getString(LoginActivity.TOKEN, "token not found"));
+            String userToken = tokenPrefs.getString(LoginActivity.TOKEN, "-1");
+            if (userToken.equals("-1")) {
+                Intent loginIntent = new Intent(getApplicationContext(), LoginActivity.class);
+                Toast.makeText(getApplicationContext(),
+                        R.string.hint_login_to_add_route, Toast.LENGTH_SHORT).show();
+                startActivity(loginIntent);
+            } else {
+                RestAdapter restAdapter = new RestAdapter.Builder()
                     .setEndpoint(API.BASE_URL)
                     .setLogLevel(RestAdapter.LogLevel.FULL)
                     .build();
-            API service = restAdapter.create(API.class);
-            service.sendRouteInfo(TEMP_TOKEN,
-                    edTeRouteTitle.getText().toString(),
-                    cityId,
-                    edTeRouteDesc.getText().toString(),
-                    1,
-                    new Callback<Response>() {
-                        @Override
-                        public void success(Response response, Response response2) {
-                            Toast.makeText(getApplicationContext(),
-                                    "YESS", Toast.LENGTH_SHORT).show();
-                        }
+                API service = restAdapter.create(API.class);
+                service.sendRouteInfo(userToken,
+                        edTeRouteTitle.getText().toString(),
+                        cityId,
+                        edTeRouteDesc.getText().toString(),
+                        1,      //С‚РѕР»СЊРєРѕ РїРµС€РєРѕРј
+                        new Callback<RouteIdAnswer>() {
+                            @Override
+                            public void success(RouteIdAnswer routeIdAnswer, Response response) {
+                                Toast.makeText(getApplicationContext(),
+                                        "YESS " + routeIdAnswer.getRouteId(), Toast.LENGTH_SHORT).show();
 
-                        @Override
-                        public void failure(RetrofitError error) {
-                            Toast.makeText(getApplicationContext(),
-                                    "Sorry, you are failed", Toast.LENGTH_SHORT).show();
+                                Intent mapsIntent = new Intent(getApplicationContext(), MapsActivity.class);
+                                mapsIntent.putExtra(KEY_CITY_NAME, edTeCityName.getText().toString());
+                                mapsIntent.putExtra("ADD", true);
+                                //РїРµСЂРµРґР°С‡Рё СЃРіРµРЅРµСЂРёСЂРѕРІР°РЅРЅРѕРіРѕ СЃРµСЂРІРµСЂРѕРј ID РјР°СЂС€СЂСѓС‚Р° РІ Р°РєС‚РёРІРЅРѕСЃС‚СЊ РєР°СЂС‚С‹
+                                mapsIntent.putExtra(SearchResultActivity.KEY_ID, routeIdAnswer.getRouteId());
+                                startActivity(mapsIntent);
+                            }
 
-                        }
-                    });
+                            @Override
+                            public void failure(RetrofitError error) {
+                                Toast.makeText(getApplicationContext(),
+                                        "Sorry, you are failed", Toast.LENGTH_SHORT).show();
+                                Log.e("RETROFIT ERROR", error.getMessage());
+                            }
+                        });
+            }
+
         }
-        Intent mapsIntent = new Intent(getApplicationContext(), MapsActivity.class);
-        mapsIntent.putExtra("city", edTeCityName.getText().toString());
-        mapsIntent.putExtra("ADD", true);
-        startActivity(mapsIntent);
     }
 }

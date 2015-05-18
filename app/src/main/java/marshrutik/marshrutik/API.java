@@ -13,6 +13,7 @@ import retrofit.http.FormUrlEncoded;
 import retrofit.http.GET;
 import retrofit.Callback;
 import retrofit.http.POST;
+import retrofit.http.PUT;
 import retrofit.http.Path;
 import retrofit.http.Query;
 import retrofit.http.QueryMap;
@@ -28,16 +29,20 @@ public interface API {
     void getRoutes(@Path("city_id") int cityId, Callback<List<Route>> callback);
 
     @GET("/routes/{route_id}")
-    void getRouteInfo(@Path("{route_id") int routeId, Callback<Route> callback);
-
+    void getRouteInfo(@Path("route_id") int routeId, Callback<List<Route>> callback);
+    //получение информации о том, как построить маршрут
     @GET("/maps/api/directions/json")
     void getGoogleRoute(
             @Query(value = "origin", encodeValue = false) String position,
             @Query(value = "destination", encodeValue = false) String destination,
             @Query("sensor") boolean sensor,
             @Query("language") String language,
-            @Query("mode") String mode,
+            @Query("mode") String mode,     //mode - пешком, автомобилем или общественным транспортом
             Callback<GoogleRoute> callback);
+
+    @GET("/maps/api/geocode/json")
+    void getCityGeoCoord(@Query(value = "address", encodeValue = false) String city,
+                         Callback<MapsActivity.CityGeoCoordinates> callback);
 
     @FormUrlEncoded
     @POST("/routes/")
@@ -46,9 +51,32 @@ public interface API {
                        @Field("city_id") int cityId,
                        @Field("route_description") String routeDesc,
                        @Field("typeofmovement_id") int typeOfMove,
-                       Callback<Response> callback);
+                       Callback<RouteIdAnswer> callback);
 
     @POST("/routeparts/")
     void sendRouteParts(@Body MapsActivity.RoutePartsForSend routes,
                         Callback<Response> callback);
+    @FormUrlEncoded
+    @POST("/login")
+    void makeLogin(@Field("user_username") String login,
+                   @Field("user_password") String password,
+                   Callback<LoginActivity.LoginAnswer> callback);
+    @FormUrlEncoded
+    @POST("/signup")
+    void registration(@Field("user_username") String username,
+                      @Field("user_password") String password,
+                      @Field("user_email") String email,
+                      @Field("user_firstname") String name,
+                      @Field("user_lastname") String surname,
+                      @Field("city_id") int cityId,
+                      Callback<LoginActivity.LoginAnswer> callback);
+    @FormUrlEncoded
+    @POST("/routes/user")
+    void getUserRoutes(@Field("token") String token,
+                       Callback<List<Route>> callback);
+
+    @PUT("/routeparts/")
+    void updateRoutepart(@Body MapsActivity.RoutePartsForSend routes,
+                         Callback<Response> callback);
+
     }
