@@ -33,8 +33,17 @@ public interface API {
     //получение информации о том, как построить маршрут
     @GET("/maps/api/directions/json")
     void getGoogleRoute(
-            @Query(value = "origin", encodeValue = false) String position,
+            @Query(value = "origin", encodeValue = false) String origin,
             @Query(value = "destination", encodeValue = false) String destination,
+            @Query("sensor") boolean sensor,
+            @Query("language") String language,
+            @Query("mode") String mode,     //mode - пешком, автомобилем или общественным транспортом
+            Callback<GoogleRoute> callback);
+    @GET("/maps/api/directions/json")
+    void getGoogleRoute(
+            @Query(value = "origin", encodeValue = false) String origin,
+            @Query(value = "destination", encodeValue = false) String destination,
+            @Query(value = "waypoints", encodeValue = false) String waypoints,
             @Query("sensor") boolean sensor,
             @Query("language") String language,
             @Query("mode") String mode,     //mode - пешком, автомобилем или общественным транспортом
@@ -43,6 +52,9 @@ public interface API {
     @GET("/maps/api/geocode/json")
     void getCityGeoCoord(@Query(value = "address", encodeValue = false) String city,
                          Callback<MapsActivity.CityGeoCoordinates> callback);
+
+    @GET("/cities/{city_id}/sights")
+    void getSights(@Path("city_id") int cityId, Callback<List<Sights>> callback);
 
     @FormUrlEncoded
     @POST("/routes/")

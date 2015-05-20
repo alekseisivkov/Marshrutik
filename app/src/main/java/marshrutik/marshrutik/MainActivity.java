@@ -1,6 +1,5 @@
 package marshrutik.marshrutik;
 
-import android.app.Fragment;
 import android.app.SearchManager;
 import android.content.Context;
 import android.content.Intent;
@@ -11,39 +10,127 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
+import android.widget.ListView;
+import android.widget.ProgressBar;
 import android.widget.SearchView;
 import android.widget.Toast;
+
+import java.util.List;
+
+import retrofit.Callback;
+import retrofit.RestAdapter;
+import retrofit.RetrofitError;
+import retrofit.client.Response;
 
 
 public class MainActivity extends ActionBarActivity {
     private Button optimizeRoute;
     private SharedPreferences tokenPrefs;
+    private ProgressBar progressBar;
+
+    public static final String KEY_OPITIMIZED_ROUTE = "RouteOptimizeMode";
+    public static final String KEY_QUANTITY_OF_SIGHTS = "SightsQuantity";
+    public static final String KEY_ORIGIN = "origin";
+    public static final String KEY_DESTINATION = "destination";
+    public static final String KEY_WAYPOINTS = "waypoints";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        optimizeRoute = (Button) findViewById(R.id.buttonOptimizeRoute);
+        progressBar = (ProgressBar)findViewById(R.id.progressBarMainActivity);
+
         tokenPrefs = getSharedPreferences(LoginActivity.TOKEN_FILENAME, MODE_PRIVATE);
-        optimizeRoute = (Button)findViewById(R.id.button);
-        optimizeRoute.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Toast.makeText(getApplicationContext(),
-                        "Функция в разработке, скоро вы сможете ее использовать", Toast.LENGTH_SHORT).show();
-            }
-        });
+        progressBar.setVisibility(View.VISIBLE);
+        optimizeRoute.setVisibility(View.INVISIBLE);
+
+
+        getListOfSights();
     }
 
+
+    private void getListOfSights() {
+        RestAdapter restAdapter = new RestAdapter.Builder()
+                .setEndpoint(API.BASE_URL)
+                .build();
+        API service = restAdapter.create(API.class);
+        service.getSights(2, new Callback<List<Sights>>() { //2 - id города Петербург
+            @Override
+            public void success(List<Sights> sightses, Response response) {
+                fillListView(sightses);
+            }
+
+            @Override
+            public void failure(RetrofitError error) {
+                Log.e("RETROFIT", error.getMessage());
+                Toast.makeText(getApplicationContext(),
+                        "NOOO", Toast.LENGTH_SHORT).show();
+
+            }
+        });
+
+    }
+
+    private void fillListView(List<Sights> sightses) {
+        if (sightses.size() != 0) {
+            final ListView listView = (ListView)findViewById(R.id.listViewSights);
+            final SightAdapter sightAdapter = new SightAdapter(getBaseContext(), sightses);
+
+            progressBar.setVisibility(View.GONE);
+            optimizeRoute.setVisibility(View.VISIBLE);
+            listView.setAdapter(sightAdapter);
+
+            optimizeRoute.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    String selectedSights = "optimize:true";
+                    String firstSight = null;
+                    String endSight = null;
+                    int size = 0;
+                    for (Sights sights: sightAdapter.getCheckedSights()) {
+                        if (sights.isSightSelected()){
+                            ++size;
+                            if (size == 1) {
+                                firstSight = sights.getLatLng();
+                            } else {
+                                if (size == 2) {
+                                    endSight = sights.getLatLng();
+                                } else {
+                                    selectedSights += "|" + sights.getLatLng();
+                                }
+                            }
+                        }
+                    }
+                    Log.d("TAG", "first: " + firstSight +
+                            " end: " + endSight +
+                            " selected: " + selectedSights +
+                            " size: " + size);
+                    if (size > 5) {
+                        Toast.makeText(getApplicationContext(),
+                                "Поддерживает не больше 5 достопримечательностей", Toast.LENGTH_SHORT).show();
+                    } else {
+                        if (size > 1) {
+                            Intent mapsIntent = new Intent(getApplicationContext(), MapsActivity.class);
+                            mapsIntent.putExtra(KEY_OPITIMIZED_ROUTE, true);
+                            mapsIntent.putExtra(KEY_QUANTITY_OF_SIGHTS, size);
+                            mapsIntent.putExtra(KEY_ORIGIN, firstSight);
+                            mapsIntent.putExtra(KEY_DESTINATION, endSight);
+                            mapsIntent.putExtra(KEY_WAYPOINTS, selectedSights);
+                            startActivity(mapsIntent);
+                        }
+                    }
+                }
+            });
+        }
+    }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present.
         getMenuInflater().inflate(R.menu.menu_main, menu);
-//        checkLogin(menu);
-//        menu.getItem(1).setVisible(false);
         String token = tokenPrefs.getString(LoginActivity.TOKEN, "-1");
         if (!token.equals("-1")) {
             menu.findItem(R.id.action_register).setVisible(false);
@@ -169,4 +256,5 @@ public class MainActivity extends ActionBarActivity {
         Intent addRouteIntent = new Intent(getApplicationContext(), AddRouteActivity.class);
         startActivity(addRouteIntent);
     }
+
 }

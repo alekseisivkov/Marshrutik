@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -40,7 +41,8 @@ public class MapsActivity extends Activity implements OnMapReadyCallback {
     private boolean isForAddRoute;
     //если активность вызвана для изменения маршрута
     private boolean isForRouteUpdate;
-
+    //если для отображения оптимального маршрута по достопримечательностям
+    private boolean isForOptimizeRoute;
     //по умолчанию, карта центрируется на Эрмитаже в Петербург
     private final static double LAT_DEFAULT = 59.939832;
     private final static double LNG_DEFAULT = 30.31456;
@@ -49,6 +51,9 @@ public class MapsActivity extends Activity implements OnMapReadyCallback {
     private ArrayList<Polyline> polylines;
     private int routeId;
     private LatLng centerMap;
+    //настройки, хранящие токен пользователя
+    private SharedPreferences tokenPrefs;
+
     //TODO: заменить на адекватный токен
     private static final String TEMP_TOKEN =
             "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJleHAiOjE0NjA3NTY1MjE2Mzcs" +
@@ -110,9 +115,15 @@ public class MapsActivity extends Activity implements OnMapReadyCallback {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_maps);
+
+        tokenPrefs = getSharedPreferences(LoginActivity.TOKEN_FILENAME, MODE_PRIVATE);
+
         centerMap = new LatLng(LAT_DEFAULT, LNG_DEFAULT);
+
         isForAddRoute = getIntent().getBooleanExtra("ADD", false);  //если карта для отображения маршрута - true, иначе - false
         isForRouteUpdate = getIntent().getBooleanExtra(SearchResultActivity.KEY_UPDATE, false);
+        isForOptimizeRoute = getIntent().getBooleanExtra(MainActivity.KEY_OPITIMIZED_ROUTE, false);
+
         markerList = new ArrayList<>();
         polylines = new ArrayList<>();
         routeId = getIntent().getIntExtra(SearchResultActivity.KEY_ID, -1);
@@ -147,6 +158,10 @@ public class MapsActivity extends Activity implements OnMapReadyCallback {
 
     @Override
     public void onMapReady(final GoogleMap map) {
+        //TODO: заменить на switch/case, и сделать одну int переменную идентификатор.
+        if (isForOptimizeRoute) {
+            drawRouteOnMap(map);
+        }
         if (isForAddRoute || isForRouteUpdate) {    //если активность вызвана для добавления маршрута
             if (isForRouteUpdate) {
                 drawRouteOnMap(map);
@@ -170,42 +185,93 @@ public class MapsActivity extends Activity implements OnMapReadyCallback {
             }
         }
     }
-    private void drawRouteOnMap(GoogleMap map){
-        //TODO: добавить проверку на наличие данных
-        int size = getIntent().getIntExtra(RouteInfoActivity.KEY_QUANTITY_ROUTEPART, -1);
-        Intent prevIntent = getIntent();
-        if (size != -1) {
-            centerMap = StringToLatLng(prevIntent.getStringExtra(RouteInfoActivity.KEY_START_ROUTEPART + 0));
-            map.moveCamera(CameraUpdateFactory.newLatLngZoom(centerMap, 14));
-            for (int i = 0; i < size; i++) {
-                Marker markerEnd = null;
-                if (i > 0 ) {
-                    makeRoute(prevIntent.getStringExtra(RouteInfoActivity.KEY_START_ROUTEPART + i),
-                            prevIntent.getStringExtra(RouteInfoActivity.KEY_START_ROUTEPART + (i-1)), map); }
-                if (i == size - 1) {
-                    makeRoute(prevIntent.getStringExtra(RouteInfoActivity.KEY_START_ROUTEPART + i),
-                            prevIntent.getStringExtra(RouteInfoActivity.KEY_END_ROUTEPART + i), map);
-                    markerEnd = map.addMarker(new MarkerOptions()
-                            .position(StringToLatLng(
-                                    prevIntent.getStringExtra(RouteInfoActivity.KEY_END_ROUTEPART+i)))
-                            .title(getResources().getString(R.string.marker_end_route_title))
-                            .snippet(getResources().getString(R.string.marker_end_route_desc)));
-                }
-                Marker marker = map.addMarker(new MarkerOptions()
-                        .position(StringToLatLng(
-                                prevIntent.getStringExtra(RouteInfoActivity.KEY_START_ROUTEPART + i)))
-                        .title(prevIntent.getStringExtra(RouteInfoActivity.KEY_TITLE_ROUTEPART + i))
-                        .snippet(prevIntent.getStringExtra(RouteInfoActivity.KEY_DESC_ROUTEPART + i)));
-                if (isForRouteUpdate) {
-                    markerList.add(marker);
-                    if (i == size - 1) {
-                        markerList.add(markerEnd);
-                        markerEnd.setDraggable(true);
+    private void drawRouteOnMap(final GoogleMap map){
+        if (isForOptimizeRoute) {
+            Intent prevIntent = getIntent();
+            final String origin = prevIntent.getStringExtra(MainActivity.KEY_ORIGIN);
+            final String destination = prevIntent.getStringExtra(MainActivity.KEY_DESTINATION);
+            final String waypoint = prevIntent.getStringExtra(MainActivity.KEY_WAYPOINTS);
+            RestAdapter restAdapter = new RestAdapter.Builder()
+                    .setEndpoint(API.BASE_GOOGLEAPI_URL)
+                    .setLogLevel(RestAdapter.LogLevel.FULL)
+                    .build();
+            API service = restAdapter.create(API.class);
+            service.getGoogleRoute(origin, destination, waypoint, true, "ru", "walking", new Callback<GoogleRoute>() {
+                @Override
+                public void success(GoogleRoute googleRoute, Response response) {
+                    Toast.makeText(getApplicationContext(), "YESS", Toast.LENGTH_SHORT).show();
+                    map.moveCamera(CameraUpdateFactory.newLatLngZoom(StringToLatLng(origin), 14));
+
+                    map.addMarker(new MarkerOptions().position(StringToLatLng(origin)));
+                    map.addMarker(new MarkerOptions().position(StringToLatLng(destination)));
+
+                    String waypoints[] = waypoint.split("\\|");
+                    for (int i = 1; i < waypoints.length; i++) { // i=0 - это optimize:true
+                        Log.d("TAG", "waypoint: " + waypoints[i]);
+                        map.addMarker(new MarkerOptions().position(StringToLatLng(waypoints[i])));
                     }
-                    marker.setDraggable(true);
-                    updateRoute(map);
+                    Log.d("TAG", "waypoint lenght: " + waypoints.length);
+                    for (int i = 0; i < googleRoute.getWaypointOrder().length; i++) {
+                        Log.d("TAG", "order: " + googleRoute.getWaypointOrder()[i]);
+                    }
+                    Log.d("TAG", "order lenght: " + googleRoute.getWaypointOrder().length);
+                    makeRoute(origin, waypoints[Integer.parseInt(googleRoute.getWaypointOrder()[0])+1], map);
+                    for (int i = 1; i < waypoints.length; i++) {
+                        if (i == waypoints.length - 1) {
+                            makeRoute(waypoints[Integer.parseInt(googleRoute.getWaypointOrder()[i-1]) + 1], destination, map);
+                        }
+                        else {
+                            makeRoute(waypoints[Integer.parseInt(googleRoute.getWaypointOrder()[i - 1]) + 1],
+                                    waypoints[Integer.parseInt(googleRoute.getWaypointOrder()[i]) + 1], map);
+                        }
+                    }
                 }
 
+                @Override
+                public void failure(RetrofitError error) {
+                    Toast.makeText(getApplicationContext(), "NOO", Toast.LENGTH_SHORT).show();
+                    Log.e("RETROFIT", error.getMessage());
+                }
+            });
+        }
+        else {
+            //TODO: добавить проверку на наличие данных
+            int size = getIntent().getIntExtra(RouteInfoActivity.KEY_QUANTITY_ROUTEPART, -1);
+            Intent prevIntent = getIntent();
+            if (size != -1) {
+                centerMap = StringToLatLng(prevIntent.getStringExtra(RouteInfoActivity.KEY_START_ROUTEPART + 0));
+                map.moveCamera(CameraUpdateFactory.newLatLngZoom(centerMap, 14));
+                for (int i = 0; i < size; i++) {
+                    Marker markerEnd = null;
+                    if (i > 0) {
+                        makeRoute(prevIntent.getStringExtra(RouteInfoActivity.KEY_START_ROUTEPART + i),
+                                prevIntent.getStringExtra(RouteInfoActivity.KEY_START_ROUTEPART + (i - 1)), map);
+                    }
+                    if (i == size - 1) {
+                        makeRoute(prevIntent.getStringExtra(RouteInfoActivity.KEY_START_ROUTEPART + i),
+                                prevIntent.getStringExtra(RouteInfoActivity.KEY_END_ROUTEPART + i), map);
+                        markerEnd = map.addMarker(new MarkerOptions()
+                                .position(StringToLatLng(
+                                        prevIntent.getStringExtra(RouteInfoActivity.KEY_END_ROUTEPART + i)))
+                                .title(getResources().getString(R.string.marker_end_route_title))
+                                .snippet(getResources().getString(R.string.marker_end_route_desc)));
+                    }
+                    Marker marker = map.addMarker(new MarkerOptions()
+                            .position(StringToLatLng(
+                                    prevIntent.getStringExtra(RouteInfoActivity.KEY_START_ROUTEPART + i)))
+                            .title(prevIntent.getStringExtra(RouteInfoActivity.KEY_TITLE_ROUTEPART + i))
+                            .snippet(prevIntent.getStringExtra(RouteInfoActivity.KEY_DESC_ROUTEPART + i)));
+                    if (isForRouteUpdate) {
+                        markerList.add(marker);
+                        if (i == size - 1) {
+                            markerList.add(markerEnd);
+                            markerEnd.setDraggable(true);
+                        }
+                        marker.setDraggable(true);
+                        updateRoute(map);
+                    }
+
+                }
             }
         }
     }
@@ -220,27 +286,34 @@ public class MapsActivity extends Activity implements OnMapReadyCallback {
             @Override
             public void onClick(View v) {
                 final RoutePartsForSend routes = new RoutePartsForSend();     //TODO: добавить AlertDialog подтверждения отправки маршрута
-                routes.setToken(TEMP_TOKEN);
-                for (int i = 0; i < markerList.size() - 1; i++) {
-                    Log.d("TAG", "points: " + markerList.get(i).getPosition() + " ");
-                    final RouteParts routeParts = new RouteParts();
-                    routeParts.setStartLat(markerList.get(i).getPosition().latitude);
-                    routeParts.setStartLong(markerList.get(i).getPosition().longitude);
-                    routeParts.setEndLat(markerList.get(i + 1).getPosition().latitude);
-                    routeParts.setEndLong(markerList.get(i + 1).getPosition().longitude);
-                    if (isForRouteUpdate) {
-                        routeParts.setRoutepartId(getIntent().getIntExtra(RouteInfoActivity.KEY_ROUTEPART_ID+i, -1));
-                    }
-                    if (routeId != -1) {
-                        routeParts.setRouteId(routeId);
-                    } else {
-                        Toast.makeText(getApplicationContext(),
-                                R.string.error_routeId_not_found, Toast.LENGTH_SHORT).show();
-                    }
-                    routeParts.setPartId(i + 1);
-                    routeParts.setRoutepartTitle(markerList.get(i).getTitle());
-                    routeParts.setRoutePartDesc(markerList.get(i).getSnippet());
-                    routes.array_parts.add(routeParts);
+                String userToken = tokenPrefs.getString(LoginActivity.TOKEN, "-1");
+                if (userToken.equals("-1")) {
+                    Intent loginIntent = new Intent(getApplicationContext(), LoginActivity.class);
+                    Toast.makeText(getApplicationContext(),
+                            R.string.hint_login_to_add_route, Toast.LENGTH_SHORT).show();
+                    startActivity(loginIntent);
+                } else {
+                    routes.setToken(userToken);
+                    for (int i = 0; i < markerList.size() - 1; i++) {
+                        Log.d("TAG", "points: " + markerList.get(i).getPosition() + " ");
+                        final RouteParts routeParts = new RouteParts();
+                        routeParts.setStartLat(markerList.get(i).getPosition().latitude);
+                        routeParts.setStartLong(markerList.get(i).getPosition().longitude);
+                        routeParts.setEndLat(markerList.get(i + 1).getPosition().latitude);
+                        routeParts.setEndLong(markerList.get(i + 1).getPosition().longitude);
+                        if (isForRouteUpdate) {
+                            routeParts.setRoutepartId(getIntent().getIntExtra(RouteInfoActivity.KEY_ROUTEPART_ID + i, -1));
+                        }
+                        if (routeId != -1) {
+                            routeParts.setRouteId(routeId);
+                        } else {
+                            Toast.makeText(getApplicationContext(),
+                                    R.string.error_routeId_not_found, Toast.LENGTH_SHORT).show();
+                        }
+                        routeParts.setPartId(i + 1);
+                        routeParts.setRoutepartTitle(markerList.get(i).getTitle());
+                        routeParts.setRoutePartDesc(markerList.get(i).getSnippet());
+                        routes.array_parts.add(routeParts);
 //                    //так как у Севы сделаны PUT только по одной части, отсылаем много запросов и удаляем из массива отосланные
 //                    if (isForRouteUpdate) {
 //                        RestAdapter restAdapter = new RestAdapter.Builder()
@@ -266,46 +339,46 @@ public class MapsActivity extends Activity implements OnMapReadyCallback {
 //
 //                    }
 
-                }
+                    }
 
-                RestAdapter restAdapter = new RestAdapter.Builder()
-                        .setEndpoint(API.BASE_URL)
-                        .setLogLevel(RestAdapter.LogLevel.FULL) //TODO: убрать full level
-                        .build();
-                API service = restAdapter.create(API.class);
-                if (isForAddRoute) {
-                    service.sendRouteParts(routes, new Callback<Response>() {
-                        @Override
-                        public void success(Response response, Response response2) {
-                            Toast.makeText(getApplicationContext(),
-                                    R.string.hint_send_route_success, Toast.LENGTH_LONG).show();
-                            finish();
-                        }
+                    RestAdapter restAdapter = new RestAdapter.Builder()
+                            .setEndpoint(API.BASE_URL)
+                            .setLogLevel(RestAdapter.LogLevel.FULL) //TODO: убрать full level
+                            .build();
+                    API service = restAdapter.create(API.class);
+                    if (isForAddRoute) {
+                        service.sendRouteParts(routes, new Callback<Response>() {
+                            @Override
+                            public void success(Response response, Response response2) {
+                                Toast.makeText(getApplicationContext(),
+                                        R.string.hint_send_route_success, Toast.LENGTH_LONG).show();
+                                finish();
+                            }
 
-                        @Override
-                        public void failure(RetrofitError error) {
-                            Toast.makeText(getApplicationContext(),
-                                    "NOOO", Toast.LENGTH_SHORT).show();
-                            Log.e("RETROFIT", error.getMessage());
-                        }
-                    });
-                }
-                else if (isForRouteUpdate) {
-                    service.updateRoutepart(routes, new Callback<Response>() {
-                        @Override
-                        public void success(Response response, Response response2) {
-                            Toast.makeText(getApplicationContext(),
-                                    R.string.hint_route_update_success, Toast.LENGTH_SHORT).show();
-                            finish();
-                        }
+                            @Override
+                            public void failure(RetrofitError error) {
+                                Toast.makeText(getApplicationContext(),
+                                        "NOOO", Toast.LENGTH_SHORT).show();
+                                Log.e("RETROFIT", error.getMessage());
+                            }
+                        });
+                    } else if (isForRouteUpdate) {
+                        service.updateRoutepart(routes, new Callback<Response>() {
+                            @Override
+                            public void success(Response response, Response response2) {
+                                Toast.makeText(getApplicationContext(),
+                                        R.string.hint_route_update_success, Toast.LENGTH_SHORT).show();
+                                finish();
+                            }
 
-                        @Override
-                        public void failure(RetrofitError error) {
-                            Toast.makeText(getApplicationContext(),
-                                    "Something gonna wrong", Toast.LENGTH_SHORT).show();
-                            Log.e("RETROFIT", error.getMessage());
-                        }
-                    });
+                            @Override
+                            public void failure(RetrofitError error) {
+                                Toast.makeText(getApplicationContext(),
+                                        "Something gonna wrong", Toast.LENGTH_SHORT).show();
+                                Log.e("RETROFIT", error.getMessage());
+                            }
+                        });
+                    }
                 }
             }
         });
@@ -409,7 +482,7 @@ public class MapsActivity extends Activity implements OnMapReadyCallback {
                 });
     }
 
-    //function to transfer latitude\longtitude to String
+    //function to convert latitude\longtitude to String
     private String latToString(LatLng latLng) {
         return String.valueOf(latLng.latitude) + "," + String.valueOf(latLng.longitude);
     }

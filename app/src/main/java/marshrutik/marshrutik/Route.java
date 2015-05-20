@@ -52,6 +52,8 @@ public class Route {
     public int getRoutePartsLength() {
         return routeparts.size();
     }
+
+
     //get'еры для Routes
     public int getRouteId() {return routeId;}
     public String getTypeOfMove() {return typeOfMove;}

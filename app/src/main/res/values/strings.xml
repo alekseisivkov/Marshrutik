@@ -31,6 +31,7 @@
     <string name="hint_enter_route_title">Введите название маршрута</string>
     <string name="hint_enter_route_desc">Опишите маршрут в нескольких словах</string>
     <string name="hint_alert_dialog_title">Введите название точки и её краткое описание</string>
+    <string name="hint_sight_name">Название достопримечательности</string>
     <string name="hint_send_route_success">Маршрут успешно добавлен.
         После одобрения модератором, он появится в приложении</string>
     <string name="hint_route_update_success">Маршрут успешно изменен.
